@@ -23,7 +23,7 @@ class SessionTable:
                 "validation_completed": False,
                 "file_info": None,
                 "validation_log": [],
-                "selected_country": "US",  # Add country selection to session
+                "selected_countries": [],  # Add country selection to session
                 "confirmed_data": None,  # Store confirmed data for selected country
                 "confirmation_completed": False,
             }
@@ -84,18 +84,18 @@ class SessionTable:
             return invalid_count == 0
         return False
 
-    def get_selected_country(self):
-        """Get selected country"""
-        return st.session_state.session_data["selected_country"]
+    def get_selected_countries(self):
+        """Get selected countries list"""
+        return st.session_state.session_data.get("selected_countries", [])
 
-    def set_selected_country(self, country):
-        """Set selected country"""
-        if st.session_state.session_data["selected_country"] != country:
-            st.session_state.session_data["selected_country"] = country
-            # Reset confirmation when country changes
+    def set_selected_countries(self, countries):
+        """Set selected countries list"""
+        if set(st.session_state.session_data.get("selected_countries", [])) != set(countries):
+            st.session_state.session_data["selected_countries"] = countries
+            # Reset confirmation when countries change
             st.session_state.session_data["confirmed_data"] = None
             st.session_state.session_data["confirmation_completed"] = False
-            self.log_message(f"Selected country changed to: {country}")
+            self.log_message(f"Selected countries changed to: {', '.join(countries)}")
 
     def clear_all(self):
         """Clear all session data"""
@@ -105,9 +105,9 @@ class SessionTable:
             "validation_completed": False,
             "file_info": None,
             "validation_log": [],
-            "selected_country": "US",  # Reset to default
             "confirmed_data": None,
             "confirmation_completed": False,
+            "selected_countries": [],
         }
         self.log_message("Cleared all session data")
 
@@ -288,7 +288,11 @@ def prepare_display_data(view_filter, row_limit):
             original_data = session_table.get_original_data()
             if original_data is not None:
                 limit = int(row_limit) if row_limit != "All" else len(original_data)
-                return original_data.head(limit)
+                display_df = original_data.head(limit) 
+
+                display_df = display_df.reset_index(drop=True)
+                display_df.index = display_df.index + 1
+                return display_df
             return None
 
         # Show validation results
@@ -328,13 +332,16 @@ def prepare_display_data(view_filter, row_limit):
             if not display_df["ValidationErrors"].str.strip().eq("").all():
                 column_order.append("ValidationErrors")
 
-        return display_df[column_order]
+        final_df = display_df[column_order]
+        final_df = final_df.reset_index(drop=True)
+        final_df.index = final_df.index + 1
+
+        return final_df
 
     except Exception as e:
         session_table.log_message(f"Display preparation error: {str(e)}", "ERROR")
         return None
 
-# Add this method to the SessionTable class
 def has_data_for_overview(self):
     """Check if there's enough data to show the overview tab"""
     return self.get_original_data() is not None

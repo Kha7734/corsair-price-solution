@@ -68,69 +68,78 @@ def upload_file_section():
     return None
 
 
-
 def country_selection_section():
-    """Handle country selection dropdown and confirmation"""
+    """Handle country multiselect dropdown and confirmation"""
     col1, col2 = st.columns([2, 8])
     with col1:
-        # Get current selected country from session
-        current_country = session_table.get_selected_country()
+        # Get current selected countries from session
+        current_countries = session_table.get_selected_countries()
+        
+        # Ensure all currently selected countries are in the country list
+        current_countries = [c for c in current_countries if c in COUNTRY_LIST]
+        if not current_countries:
+            current_countries = []
+            session_table.set_selected_countries(current_countries)
 
-        # Ensure current country is in the list, default to first if not
-        if current_country not in COUNTRY_LIST:
-            current_country = COUNTRY_LIST[0]
-            session_table.set_selected_country(current_country)
-
-        # Create country selection dropdown (no header)
-        selected_country = st.selectbox(
-            "Select country for analysis:",
+        # Create country multiselect
+        selected_countries = st.multiselect(
+            "Select country(s) for analysis:",
             options=COUNTRY_LIST,
-            index=COUNTRY_LIST.index(current_country),
+            default=current_countries,
             key="country_selector",
-            help="Choose the country for data processing and analysis",
+            help="Choose one or more countries for data processing and analysis",
         )
 
+        # Handle empty selection silently
+        final_countries = selected_countries if selected_countries else current_countries
+
         # Update session if changed
-        if selected_country != current_country:
-            session_table.set_selected_country(selected_country)
-            st.rerun()  # Refresh to update other components
+        if set(final_countries) != set(current_countries):
+            session_table.set_selected_countries(final_countries)
+            st.rerun()
 
-    return selected_country
+    return final_countries
 
 
-def confirm_selection_section(selected_country):
+def confirm_selection_section(selected_countries):
+    """Handle confirmation section for multiple countries"""
     # Confirm button logic
     is_validation_completed = session_table.is_validation_completed()
     all_data_is_valid = session_table.all_data_is_valid()
 
     # Button should be disabled if no validation or not all data is valid
-    button_disabled = not (is_validation_completed and all_data_is_valid)
+    button_disabled = not (is_validation_completed and all_data_is_valid) or not selected_countries
 
     # Determine help text based on button state
     if button_disabled:
-        if not is_validation_completed:
-            help_text = (
-                "⚠️ Please validate the data first before confirming country selection"
-            )
+        if not selected_countries:
+            help_text = "⚠️ Please select at least one country"
+        elif not is_validation_completed:
+            help_text = "⚠️ Please validate the data first before confirming country selection"
         elif not all_data_is_valid:
-            help_text = (
-                "❌ All data must be valid to proceed. Please fix invalid rows first"
-            )
+            help_text = "❌ All data must be valid to proceed. Please fix invalid rows first"
         else:
             help_text = "Button is currently disabled"
     else:
-        help_text = "Confirm data processing for the selected country"
+        countries_text = ", ".join(selected_countries)
+        help_text = f"Confirm data processing for: {countries_text}"
+
+    # Show selected countries info
+    if selected_countries:
+        if len(selected_countries) == 1:
+            st.info(f"📍 Selected country: **{selected_countries[0]}**")
+        else:
+            st.info(f"📍 Selected countries: **{', '.join(selected_countries)}**")
 
     # Confirm button
     if st.button(
-        "Confirm Selection",
-        # type="secondary",
+        f"Confirm Selection ({len(selected_countries)} countries)" if selected_countries else "Confirm Selection",
         disabled=button_disabled,
         help=help_text,
         icon="✅",
         width="stretch",
     ):
-        confirm_country_selection(selected_country)
+        confirm_country_selection(selected_countries)
 
 
 
@@ -139,7 +148,7 @@ def data_overview_section():
     st.header("📊 Data Overview")
 
     original_data = session_table.get_original_data()
-    selected_country = session_table.get_selected_country()
+    selected_countries = session_table.get_selected_countries()
 
     if original_data is not None:
         # Control bar
@@ -148,9 +157,9 @@ def data_overview_section():
         with col1:
             if st.button("Validate Data", type="secondary", icon="🔍"):
                 session_table.log_message(
-                    f"Validation button clicked for country: {selected_country}"
+                    f"Validation button clicked for country: {selected_countries}"
                 )
-                with st.spinner(f"Validating entire dataset for {selected_country}..."):
+                with st.spinner(f"Validating entire dataset for {selected_countries}..."):
                     validate_data()
 
         with col2:
@@ -207,11 +216,11 @@ def data_overview_section():
                 # Show info
                 if session_table.is_validation_completed():
                     st.caption(
-                        f"Showing {len(display_df)} rows from {view_filter.lower()} for {selected_country}"
+                        f"Showing {len(display_df)} rows from {view_filter.lower()} for {selected_countries}"
                     )
                 else:
                     st.caption(
-                        f"Showing preview of first {len(display_df)} rows for {selected_country}"
+                        f"Showing preview of first {len(display_df)} rows for {selected_countries}"
                     )
             else:
                 st.warning("No data to display")
@@ -283,12 +292,11 @@ def show_debug_log():
                 st.session_state.session_data["validation_log"] = []
                 st.rerun()
 
-
-
-def confirm_country_selection(country):
-    """Handle country confirmation and data processing"""
+def confirm_country_selection(countries):
+    """Handle country confirmation and data processing for multiple countries"""
     try:
-        session_table.log_message(f"Confirming selection for country: {country}")
+        countries_text = ", ".join(countries)
+        session_table.log_message(f"Confirming selection for countries: {countries_text}")
 
         # Get validated data
         validated_data = session_table.get_validated_data()
@@ -298,22 +306,21 @@ def confirm_country_selection(country):
 
         # Filter for valid data only
         valid_data = validated_data[validated_data["IsValid"] == True].copy()
-
         if len(valid_data) == 0:
             st.error("❌ No valid rows found in the dataset")
             return
 
         # Store confirmed data
-        session_table.store_confirmed_data(valid_data, country)
+        session_table.store_confirmed_data(valid_data, countries_text)
 
         # Log confirmation details
         session_table.log_message(
-            f"Confirmed {len(valid_data)} valid rows for {country}"
+            f"Confirmed {len(valid_data)} valid rows for {len(countries)} countries: {countries_text}"
         )
 
         # Show success message
         st.success(
-            f"✅ Successfully confirmed {len(valid_data)} valid rows for {country}"
+            f"✅ Successfully confirmed {len(valid_data)} valid rows for {len(countries)} countries: {countries_text}"
         )
 
         # Rerun to update UI

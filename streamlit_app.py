@@ -38,8 +38,6 @@ def main():
 
 def render_upload_tab():
     """Render the Upload Data tab content"""
-    st.header("📁 Upload Your Data")
-    
     # Upload section
     upload_file_section()
     

@@ -71,20 +71,22 @@ class TabManager:
         """Render session information in sidebar"""
         original_data = self.session_table.get_original_data()
         
-        if original_data is not None:
-            st.sidebar.success("✅ Data Loaded")
-            st.sidebar.caption(f"Rows: {len(original_data)}")
-            st.sidebar.caption(f"Columns: {len(original_data.columns)}")
+        # if original_data is not None:
+        #     st.sidebar.success("✅ Data Loaded")
+        #     st.sidebar.caption(f"Rows: {len(original_data)}")
+        #     st.sidebar.caption(f"Columns: {len(original_data.columns)}")
             
-            if self.session_table.is_validation_completed():
-                validated_data = self.session_table.get_validated_data()
-                valid_count = len(validated_data[validated_data['IsValid'] == True])
-                st.sidebar.caption(f"Valid: {valid_count}")
+        #     if self.session_table.is_validation_completed():
+        #         validated_data = self.session_table.get_validated_data()
+        #         valid_count = len(validated_data[validated_data['IsValid'] == True])
+        #         st.sidebar.caption(f"Valid: {valid_count}")
                 
-            selected_country = self.session_table.get_selected_country()
-            st.sidebar.caption(f"Country: {selected_country}")
-        else:
-            st.sidebar.info("ℹ️ No data loaded")
+        #     selected_country = self.session_table.get_selected_countries()
+        #     st.sidebar.caption(f"Country: {selected_country}")
+        # else:
+        #     st.sidebar.info("ℹ️ No data loaded")
+        if original_data is None: 
+          st.sidebar.info("ℹ️ No data loaded")
     
     def get_current_tab(self):
         """Get the currently selected tab"""
