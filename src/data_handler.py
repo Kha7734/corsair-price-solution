@@ -333,3 +333,8 @@ def prepare_display_data(view_filter, row_limit):
     except Exception as e:
         session_table.log_message(f"Display preparation error: {str(e)}", "ERROR")
         return None
+
+# Add this method to the SessionTable class
+def has_data_for_overview(self):
+    """Check if there's enough data to show the overview tab"""
+    return self.get_original_data() is not None

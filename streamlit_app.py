@@ -1,11 +1,12 @@
 import streamlit as st
 from src.data_handler import SessionTable
 from src.ui_components import (
-    upload_file_section, 
-    data_overview_section, 
+    upload_file_section,
+    data_overview_section,
     country_selection_section,
     confirm_selection_section
 )
+from src.tab_manager import TabManager
 from src.config import COUNTRY_LIST
 
 # Set page config
@@ -15,31 +16,56 @@ st.set_page_config(
     layout="wide"
 )
 
-# Initialize session table
+# Initialize session table and tab manager
 session_table = SessionTable()
-
-def create_global_container():
-    """Create a global 80% width container"""
-    left_spacer, main_content, right_spacer = st.columns([0.1, 0.8, 0.1])
-    return main_content
+tab_manager = TabManager(session_table)
 
 def main():
-    with create_global_container():
-        st.title("💰 Price Intelligence Solution")
+    # Render left panel with tabs (this will handle auto-switching)
+    tab_manager.render_left_panel()
+    
+    # Main content area
+    st.title("💰 Price Intelligence Solution")
+    
+    # Get current tab
+    current_tab = tab_manager.get_current_tab()
+    
+    # Render content based on selected tab
+    if current_tab == "upload":
+        render_upload_tab()
+    elif current_tab == "overview":
+        render_overview_tab()
+
+def render_upload_tab():
+    """Render the Upload Data tab content"""
+    st.header("📁 Upload Your Data")
+    
+    # Upload section
+    upload_file_section()
+    
+    # Show instructions if no data
+    if session_table.get_original_data() is None:
+        st.markdown("---")
+        st.info("👆 Please upload a CSV or Excel file to get started")
         
-        # Upload section
-        upload_file_section()
-        
-        # Data overview section (only show if data is loaded)
-        if session_table.get_original_data() is not None:
-            data_overview_section()
+        # Add helpful information
+        with st.expander("📋 File Requirements", expanded=True):
+            st.markdown("""
+            **Required Columns:**
+            - ProductID, ItemID, ActualPrice, PromoPrice, StartDate, EndDate
             
-            # Country selection section
-            selected_country = country_selection_section()
-            confirm_selection_section(selected_country)
-        else:
-            st.markdown("---")
-            st.info("👆 Please upload a file to get started")
+            **Supported Formats:**
+            - CSV (.csv), Excel (.xlsx, .xls)
+            """)
+
+def render_overview_tab():
+    """Render the Data Overview tab content"""
+    # Data overview section
+    data_overview_section()
+    
+    # Country selection section
+    selected_country = country_selection_section()
+    confirm_selection_section(selected_country)
 
 if __name__ == "__main__":
     main()

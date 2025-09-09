@@ -9,12 +9,9 @@ session_table = SessionTable()
 
 def upload_file_section():
     """Handle file upload"""
-    st.header("📁 Upload File")
-
     uploaded_file = st.file_uploader(
         "Choose a CSV or Excel file",
         type=["csv", "xlsx", "xls"],
-        label_visibility="collapsed",
         help="Upload your promotion data file",
     )
 
@@ -33,12 +30,12 @@ def upload_file_section():
             or st.session_state.session_data["file_info"] is None
             or st.session_state.session_data["file_info"]["name"] != uploaded_file.name
         ):
-
             loading_msg = (
                 "🔄 Processing large file..."
                 if file_size_mb > 10
                 else "📥 Loading file..."
             )
+
             with st.spinner(loading_msg):
                 try:
                     # Parse file
@@ -57,6 +54,9 @@ def upload_file_section():
                     session_table.log_message(
                         f"Data loaded: {len(df)} rows, {len(df.columns)} columns"
                     )
+                    
+                    # Trigger rerun to update tab state immediately
+                    st.rerun()
 
                 except Exception as e:
                     error_msg = f"File upload error: {str(e)}"
@@ -65,8 +65,8 @@ def upload_file_section():
                     return None
 
         return session_table.get_original_data()
-
     return None
+
 
 
 def country_selection_section():
