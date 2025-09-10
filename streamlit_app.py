@@ -1,5 +1,6 @@
 import streamlit as st
 from src.data_handler import SessionTable
+from src.shared_components import init_sidebar
 
 # Set page config - must be the first Streamlit command
 st.set_page_config(
@@ -14,7 +15,10 @@ if "session_table" not in st.session_state:
     st.session_state.session_table = SessionTable()
 
 
+
 def main():
+    init_sidebar()
+
     st.title("💰 Price Intelligence Solution")
     st.markdown("### Welcome to the Price Intelligence Dashboard")
 

@@ -1,6 +1,7 @@
 import streamlit as st
 from src.data_handler import SessionTable
 from src.ui_components import upload_file_section
+from src.shared_components import init_sidebar
 
 # Set page config
 st.set_page_config(
@@ -20,6 +21,9 @@ def main():
     # Get session table
     session_table = st.session_state.session_table
     
+    # Init sidebar
+    init_sidebar()
+
     # Upload section
     upload_file_section()
     

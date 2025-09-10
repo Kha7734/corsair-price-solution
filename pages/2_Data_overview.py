@@ -1,6 +1,7 @@
 import streamlit as st
 from src.data_handler import SessionTable
 from src.ui_components import data_overview_section, country_selection_section, confirm_selection_section
+from src.shared_components import init_sidebar
 
 # Set page config
 st.set_page_config(
@@ -14,6 +15,8 @@ if "session_table" not in st.session_state:
     st.session_state.session_table = SessionTable()
 
 def main():
+    # Init sidebar
+    init_sidebar()
     
     # Get session table
     session_table = st.session_state.session_table

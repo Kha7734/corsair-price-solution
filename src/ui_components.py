@@ -66,9 +66,7 @@ def upload_file_section():
         return session_table.get_original_data()
     return None
 
-# Keep all other functions the same, but update them to use:
-# session_table = st.session_state.session_table
-# instead of the global session_table
+
 
 def country_selection_section():
     """Handle country multiselect dropdown and confirmation"""
@@ -105,9 +103,7 @@ def country_selection_section():
 
         return final_countries
 
-# Continue with all other functions, making sure to replace:
-# session_table = SessionTable() 
-# with:
+
 session_table = st.session_state.session_table
 
 
@@ -172,6 +168,8 @@ def data_overview_section():
                 with st.spinner(f"Validating entire dataset for {selected_countries}..."):
                     validate_data()
 
+                st.rerun()
+
         with col2:
             if session_table.is_validation_completed():
                 view_filter = st.selectbox(
@@ -212,11 +210,6 @@ def data_overview_section():
                 session_table.clear_all()
                 st.rerun()
 
-        # Show validation summary if available
-        if session_table.is_validation_completed():
-            show_validation_summary()
-            st.markdown("---")
-
         # Display data table
         try:
             display_df = prepare_display_data(view_filter, row_limit)
@@ -239,49 +232,6 @@ def data_overview_section():
             error_msg = f"Error displaying data: {str(e)}"
             session_table.log_message(error_msg, "ERROR")
             st.error(f"❌ {error_msg}")
-
-        # Show debug log
-        # show_debug_log()
-
-
-def show_validation_summary():
-    """Display validation summary metrics"""
-    try:
-        validated_data = session_table.get_validated_data()
-        if validated_data is not None:
-            valid_count = len(validated_data[validated_data["IsValid"] == True])
-            invalid_count = len(validated_data[validated_data["IsValid"] == False])
-            total_count = len(validated_data)
-
-            col1, col2, col3, col4 = st.columns(4)
-
-            with col1:
-                st.metric(
-                    "✅ Valid Rows",
-                    valid_count,
-                    f"{valid_count/total_count*100:.1f}%" if total_count > 0 else "0%",
-                )
-
-            with col2:
-                st.metric(
-                    "❌ Invalid Rows",
-                    invalid_count,
-                    (
-                        f"{invalid_count/total_count*100:.1f}%"
-                        if total_count > 0
-                        else "0%"
-                    ),
-                )
-
-            with col3:
-                st.metric("📊 Total Rows", total_count)
-
-            with col4:
-                accuracy = valid_count / total_count * 100 if total_count > 0 else 0
-                st.metric("🎯 Data Quality", f"{accuracy:.1f}%")
-
-    except Exception as e:
-        session_table.log_message(f"Summary display error: {str(e)}", "ERROR")
 
 
 
@@ -340,3 +290,49 @@ def confirm_country_selection(countries):
         error_msg = f"Error confirming country selection: {str(e)}"
         session_table.log_message(error_msg, "ERROR")
         st.error(f"❌ {error_msg}")
+
+
+@st.fragment
+def navigation_fragment():
+    """Navigation section that won't trigger full page reruns"""
+    st.sidebar.header("📋 Navigation")
+    
+    # Your page navigation logic here
+    if st.sidebar.button("📁 Upload Data"):
+        st.switch_page("pages/1_Upload_data.py")
+    
+    if st.sidebar.button("📊 Data Overview"):
+        st.switch_page("pages/2_Data_overview.py")
+
+
+@st.fragment
+def validation_statistics_fragment():
+    """Display validation statistics in sidebar as vertical rows"""
+    session_table = st.session_state.session_table
+    
+    if session_table.is_validation_completed():
+        validated_data = session_table.get_validated_data()
+        if validated_data is not None:
+            valid_count = len(validated_data[validated_data["IsValid"] == True])
+            invalid_count = len(validated_data[validated_data["IsValid"] == False])
+            total_count = len(validated_data)
+            accuracy = valid_count / total_count * 100 if total_count > 0 else 0
+            
+            st.sidebar.header("📊 Data Quality")
+            
+            # Convert 4 columns to 4 rows
+            st.sidebar.metric(
+                "✅ Valid Rows", 
+                valid_count,
+                f"{valid_count/total_count*100:.1f}%" if total_count > 0 else "0%"
+            )
+            
+            st.sidebar.metric(
+                "❌ Invalid Rows", 
+                invalid_count,
+                f"{invalid_count/total_count*100:.1f}%" if total_count > 0 else "0%"
+            )
+            
+            st.sidebar.metric("📊 Total Rows", total_count)
+            
+            st.sidebar.metric("🎯 Data Quality", f"{accuracy:.1f}%")
