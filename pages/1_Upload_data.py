@@ -16,7 +16,6 @@ if "session_table" not in st.session_state:
 
 def main():
     st.title("📁 Upload Data")
-    st.markdown("Upload your promotion data file to get started with the analysis.")
     
     # Get session table
     session_table = st.session_state.session_table
@@ -42,8 +41,12 @@ def main():
         # Show data preview
         with st.expander("👁️ Data Preview", expanded=False):
             st.dataframe(original_data.head(10))
-            
-        st.info("👉 Next: Go to **📊 Data Overview** to validate and process your data")
+        
+        # Navigation button instead of info message
+        st.markdown("---")
+        if st.button("📊 Go to Data Overview", width="stretch"):
+            st.switch_page("pages/2_Data_overview.py")
+
     else:
         st.markdown("---")
         st.info("👆 Please upload a CSV or Excel file to get started")

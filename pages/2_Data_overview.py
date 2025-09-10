@@ -24,7 +24,10 @@ def main():
     
     if original_data is None:
         st.warning("⚠️ No data found. Please upload a file first.")
-        st.info("👈 Go to **📁 Upload Data** page to upload your data file")
+        
+        if st.button("📊 Upload Data Page", width="stretch"):
+            st.switch_page("pages/1_Upload_data.py")
+            
         return
     
     # Show data overview section

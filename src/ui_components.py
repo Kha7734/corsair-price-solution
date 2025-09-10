@@ -203,7 +203,7 @@ def data_overview_section():
             else:
                 row_limit = st.selectbox(
                     "Preview:",
-                    [5, 10, 20],
+                    [5, 10, 20, "All"],
                     key="preview_limit",
                     label_visibility="collapsed",
                 )
