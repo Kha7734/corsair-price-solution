@@ -93,6 +93,10 @@ def country_selection_section():
             help="Choose one or more countries for data processing and analysis",
         )
 
+        if set(selected_countries) != set(current_countries):
+            session_table.set_selected_countries(selected_countries)
+            st.rerun()
+
         # Handle empty selection silently
         final_countries = selected_countries if selected_countries else current_countries
 
