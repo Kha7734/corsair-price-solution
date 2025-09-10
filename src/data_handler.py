@@ -136,9 +136,8 @@ session_table = SessionTable()
 
 
 def validate_data():
-    """Validate the entire original dataset"""
+    """Validate the entire original dataset with new column structure"""
     original_data = session_table.get_original_data()
-
     if original_data is None:
         session_table.log_message("Validation failed: No data to validate", "ERROR")
         return None
@@ -146,20 +145,23 @@ def validate_data():
     session_table.log_message("Starting data validation on entire dataset")
 
     try:
-        # Required columns
+        # Updated required columns for new structure
         required_columns = [
-            "ProductID",
-            "ItemID",
-            "ActualPrice",
-            "PromoPrice",
-            "StartDate",
-            "EndDate",
+            "Category",
+            "Item",
+            "Density",
+            "MSRP",
+            "PROMO",
+            "Discount",
+            "Start Date",
+            "End Date"
         ]
 
         # Check if required columns exist
         missing_columns = [
             col for col in required_columns if col not in original_data.columns
         ]
+
         if missing_columns:
             error_msg = f"Missing required columns: {', '.join(missing_columns)}"
             session_table.log_message(error_msg, "ERROR")
@@ -188,8 +190,9 @@ def validate_data():
             try:
                 errors = []
 
-                # Check required fields
-                for col in required_columns:
+                # Check required fields (text fields)
+                text_fields = ["Category", "Item", "Density"]
+                for col in text_fields:
                     if pd.isna(row[col]) or str(row[col]).strip() == "":
                         error = f"Missing {col}"
                         errors.append(error)
@@ -197,53 +200,84 @@ def validate_data():
                             validation_stats["error_types"].get(error, 0) + 1
                         )
 
-                # Check numeric fields
+                # Check MSRP (must be > 0)
                 try:
-                    actual_price = float(row["ActualPrice"])
-                    if actual_price <= 0:
-                        error = "ActualPrice must be > 0"
+                    msrp = float(row["MSRP"])
+                    if msrp <= 0:
+                        error = "MSRP must be > 0"
                         errors.append(error)
                         validation_stats["error_types"][error] = (
                             validation_stats["error_types"].get(error, 0) + 1
                         )
                 except:
-                    error = "Invalid ActualPrice"
+                    error = "Invalid MSRP"
                     errors.append(error)
                     validation_stats["error_types"][error] = (
                         validation_stats["error_types"].get(error, 0) + 1
                     )
 
+                # Check PROMO (must be >= 0)
                 try:
-                    promo_price = float(row["PromoPrice"])
-                    if promo_price < 0:
-                        error = "PromoPrice must be >= 0"
+                    promo = float(row["PROMO"])
+                    if promo < 0:
+                        error = "PROMO must be >= 0"
                         errors.append(error)
                         validation_stats["error_types"][error] = (
                             validation_stats["error_types"].get(error, 0) + 1
                         )
                 except:
-                    error = "Invalid PromoPrice"
+                    error = "Invalid PROMO"
                     errors.append(error)
                     validation_stats["error_types"][error] = (
                         validation_stats["error_types"].get(error, 0) + 1
                     )
 
-                # Date validation
+                # Check Discount (should be negative or 0)
                 try:
-                    start_date = pd.to_datetime(row["StartDate"])
-                    end_date = pd.to_datetime(row["EndDate"])
+                    discount = float(row["Discount"])
+                    if discount > 0:
+                        error = "Discount should be <= 0"
+                        errors.append(error)
+                        validation_stats["error_types"][error] = (
+                            validation_stats["error_types"].get(error, 0) + 1
+                        )
+                except:
+                    error = "Invalid Discount"
+                    errors.append(error)
+                    validation_stats["error_types"][error] = (
+                        validation_stats["error_types"].get(error, 0) + 1
+                    )
+
+                # Date validation - handle both string dates and Excel date numbers
+                try:
+                    # Try to convert start and end dates
+                    start_date = pd.to_datetime(row["Start Date"])
+                    end_date = pd.to_datetime(row["End Date"])
+                    
                     if start_date >= end_date:
-                        error = "StartDate must be before EndDate"
+                        error = "Start Date must be before End Date"
                         errors.append(error)
                         validation_stats["error_types"][error] = (
                             validation_stats["error_types"].get(error, 0) + 1
                         )
                 except Exception:
-                    error = "Invalid date format"
-                    errors.append(error)
-                    validation_stats["error_types"][error] = (
-                        validation_stats["error_types"].get(error, 0) + 1
-                    )
+                    # Handle Excel date numbers if present
+                    try:
+                        start_date = pd.to_datetime(row["Start Date"], origin='1900-01-01', unit='D')
+                        end_date = pd.to_datetime(row["End Date"], origin='1900-01-01', unit='D')
+                        
+                        if start_date >= end_date:
+                            error = "Start Date must be before End Date"
+                            errors.append(error)
+                            validation_stats["error_types"][error] = (
+                                validation_stats["error_types"].get(error, 0) + 1
+                            )
+                    except Exception:
+                        error = "Invalid date format"
+                        errors.append(error)
+                        validation_stats["error_types"][error] = (
+                            validation_stats["error_types"].get(error, 0) + 1
+                        )
 
                 # Update validation results
                 if errors:
@@ -278,6 +312,7 @@ def validate_data():
         session_table.log_message(error_msg, "ERROR")
         st.error(f"❌ Validation failed: {str(e)}")
         return None
+
 
 
 def prepare_display_data(view_filter, row_limit):
