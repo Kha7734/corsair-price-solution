@@ -3,12 +3,11 @@ import pandas as pd
 from src.data_handler import SessionTable, validate_data, prepare_display_data
 from src.config import COUNTRY_LIST
 
-# Initialize session table
-session_table = SessionTable()
-
-
 def upload_file_section():
     """Handle file upload"""
+    # Get session table from session state
+    session_table = st.session_state.session_table
+    
     uploaded_file = st.file_uploader(
         "Choose a CSV or Excel file",
         type=["csv", "xlsx", "xls"],
@@ -54,8 +53,8 @@ def upload_file_section():
                     session_table.log_message(
                         f"Data loaded: {len(df)} rows, {len(df.columns)} columns"
                     )
-                    
-                    # Trigger rerun to update tab state immediately
+
+                    # Trigger rerun to update UI
                     st.rerun()
 
                 except Exception as e:
@@ -67,10 +66,16 @@ def upload_file_section():
         return session_table.get_original_data()
     return None
 
+# Keep all other functions the same, but update them to use:
+# session_table = st.session_state.session_table
+# instead of the global session_table
 
 def country_selection_section():
     """Handle country multiselect dropdown and confirmation"""
+    session_table = st.session_state.session_table
+    
     col1, col2 = st.columns([2, 8])
+    
     with col1:
         # Get current selected countries from session
         current_countries = session_table.get_selected_countries()
@@ -98,7 +103,12 @@ def country_selection_section():
             session_table.set_selected_countries(final_countries)
             st.rerun()
 
-    return final_countries
+        return final_countries
+
+# Continue with all other functions, making sure to replace:
+# session_table = SessionTable() 
+# with:
+session_table = st.session_state.session_table
 
 
 def confirm_selection_section(selected_countries):
