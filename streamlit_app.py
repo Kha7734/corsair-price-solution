@@ -15,7 +15,6 @@ if "session_table" not in st.session_state:
     st.session_state.session_table = SessionTable()
 
 
-
 def main():
     init_sidebar()
 
@@ -40,7 +39,7 @@ def main():
             
             **Step 2:** Review and validate data  
             - Go to **📊 Data Overview** page
-            - Validate your data and select countries
+            - Validate your data and select country   
             
             **Required Columns:**
             - Category, Item, Density, MSRP, PROMO, Discount, Start Date, End Date
@@ -73,7 +72,7 @@ def main():
         if not session_table.is_validation_completed():
             st.info("📊 Go to **Data Overview** to validate your data")
         elif not session_table.is_confirmation_completed():
-            st.info("🌍 Go to **Data Overview** to select and confirm countries")
+            st.info("🌍 Go to **Data Overview** to select and confirm country")
         else:
             st.success("✅ Data is ready for analysis!")
 

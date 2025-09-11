@@ -82,7 +82,7 @@ Each row that fails any check should get an **error column** listing issues (com
     - `Verify` (primary) — runs validations and shows progress spinner.
     - `Clear / Upload new file`
     - `Confirm` (disabled until at least one valid row exists and after Verify)
-5. **Country filter** — `st.selectbox` (single) or `st.multiselect` (multi) with `['All', ...countries found in file]`.
+5. **Country filter** — `st.selectbox` (single) or `st.multiselect` (multi) with `['All', ...country found in file]`.
 6. **Results pane**:
     - Summary KPI row: valid_count / invalid_count / warnings.
     - Tabs or radio: `Valid` / `Invalid` / `All`.

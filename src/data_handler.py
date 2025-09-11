@@ -23,7 +23,7 @@ class SessionTable:
                 "validation_completed": False,
                 "file_info": None,
                 "validation_log": [],
-                "selected_countries": [],  # Add country selection to session
+                "selected_country": "",  # Add country selection to session
                 "confirmed_data": None,  # Store confirmed data for selected country
                 "confirmation_completed": False,
             }
@@ -80,22 +80,40 @@ class SessionTable:
         """Check if ALL data is valid (no invalid rows)"""
         validated_data = self.get_validated_data()
         if validated_data is not None:
-            invalid_count = len(validated_data[validated_data["IsValid"] == False])
+            invalid_count = len(
+                validated_data[validated_data["IsValid"] == False])
             return invalid_count == 0
         return False
 
-    def get_selected_countries(self):
-        """Get selected countries list"""
-        return st.session_state.session_data.get("selected_countries", [])
+    def get_selected_country(self):
+        """Get selected country list"""
+        return st.session_state.session_data.get("selected_country", "")
 
-    def set_selected_countries(self, countries):
-        """Set selected countries list"""
-        if set(st.session_state.session_data.get("selected_countries", [])) != set(countries):
-            st.session_state.session_data["selected_countries"] = countries
-            # Reset confirmation when countries change
-            st.session_state.session_data["confirmed_data"] = None
-            st.session_state.session_data["confirmation_completed"] = False
-            self.log_message(f"Selected countries changed to: {', '.join(countries)}")
+    # def set_selected_country(self, country):
+    #     """Set selected country list"""
+    #     if set(st.session_state.session_data.get("selected_country", "")) != set(country):
+    #         st.session_state.session_data["selected_country"] = country
+    #         # Reset confirmation when country change
+    #         st.session_state.session_data["confirmed_data"] = None
+    #         st.session_state.session_data["confirmation_completed"] = False
+    #         self.log_message(
+    #             f"Selected country changed to: {country}")
+    def set_selected_country(self, country):
+        """Store selected country"""
+        current_country = st.session_state.session_data.get("selected_country", None)
+        
+        # Convert None to empty set for comparison
+        current_set = set() if current_country is None else set([current_country]) if isinstance(current_country, str) else set(current_country)
+        new_set = set() if country is None else set([country]) if isinstance(country, str) else set(country)
+        
+        if current_set != new_set:
+            st.session_state.session_data["selected_country"] = country
+            
+            if country is None:
+                self.log_message("Country selection cleared")
+            else:
+                self.log_message(f"Country set to: {country}")
+
 
     def clear_all(self):
         """Clear all session data"""
@@ -107,7 +125,7 @@ class SessionTable:
             "validation_log": [],
             "confirmed_data": None,
             "confirmation_completed": False,
-            "selected_countries": [],
+            "selected_country": "",
         }
         self.log_message("Cleared all session data")
 
@@ -139,7 +157,8 @@ def validate_data():
     """Validate the entire original dataset with new column structure"""
     original_data = session_table.get_original_data()
     if original_data is None:
-        session_table.log_message("Validation failed: No data to validate", "ERROR")
+        session_table.log_message(
+            "Validation failed: No data to validate", "ERROR")
         return None
 
     session_table.log_message("Starting data validation on entire dataset")
@@ -253,7 +272,7 @@ def validate_data():
                     # Try to convert start and end dates
                     start_date = pd.to_datetime(row["Start Date"])
                     end_date = pd.to_datetime(row["End Date"])
-                    
+
                     if start_date >= end_date:
                         error = "Start Date must be before End Date"
                         errors.append(error)
@@ -263,14 +282,17 @@ def validate_data():
                 except Exception:
                     # Handle Excel date numbers if present
                     try:
-                        start_date = pd.to_datetime(row["Start Date"], origin='1900-01-01', unit='D')
-                        end_date = pd.to_datetime(row["End Date"], origin='1900-01-01', unit='D')
-                        
+                        start_date = pd.to_datetime(
+                            row["Start Date"], origin='1900-01-01', unit='D')
+                        end_date = pd.to_datetime(
+                            row["End Date"], origin='1900-01-01', unit='D')
+
                         if start_date >= end_date:
                             error = "Start Date must be before End Date"
                             errors.append(error)
                             validation_stats["error_types"][error] = (
-                                validation_stats["error_types"].get(error, 0) + 1
+                                validation_stats["error_types"].get(
+                                    error, 0) + 1
                             )
                     except Exception:
                         error = "Invalid date format"
@@ -281,7 +303,8 @@ def validate_data():
 
                 # Update validation results
                 if errors:
-                    validation_df.at[idx, "ValidationErrors"] = "; ".join(errors)
+                    validation_df.at[idx,
+                                     "ValidationErrors"] = "; ".join(errors)
                     validation_df.at[idx, "IsValid"] = False
                     validation_stats["invalid_rows"] += 1
                 else:
@@ -303,7 +326,8 @@ def validate_data():
         session_table.log_message(
             f"Validation completed - Valid: {validation_stats['valid_rows']}, Invalid: {validation_stats['invalid_rows']}"
         )
-        session_table.log_message(f"Error breakdown: {validation_stats['error_types']}")
+        session_table.log_message(
+            f"Error breakdown: {validation_stats['error_types']}")
 
         return validation_df
 
@@ -314,7 +338,6 @@ def validate_data():
         return None
 
 
-
 def prepare_display_data(view_filter, row_limit):
     """Prepare data for display based on filters"""
     try:
@@ -322,8 +345,9 @@ def prepare_display_data(view_filter, row_limit):
             # Show preview of original data
             original_data = session_table.get_original_data()
             if original_data is not None:
-                limit = int(row_limit) if row_limit != "All" else len(original_data)
-                display_df = original_data.head(limit) 
+                limit = int(row_limit) if row_limit != "All" else len(
+                    original_data)
+                display_df = original_data.head(limit)
 
                 display_df = display_df.reset_index(drop=True)
                 display_df.index = display_df.index + 1
@@ -374,8 +398,10 @@ def prepare_display_data(view_filter, row_limit):
         return final_df
 
     except Exception as e:
-        session_table.log_message(f"Display preparation error: {str(e)}", "ERROR")
+        session_table.log_message(
+            f"Display preparation error: {str(e)}", "ERROR")
         return None
+
 
 def has_data_for_overview(self):
     """Check if there's enough data to show the overview tab"""

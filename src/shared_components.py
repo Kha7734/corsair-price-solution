@@ -24,11 +24,11 @@ def sidebar_info_fragment():
             st.metric("📊 Total Rows", total_count)
             st.metric("🎯 Quality Score", f"{accuracy:.1f}%")
 
-            # Show selected countries if available
-            selected_countries = session_table.get_selected_countries()
-            if selected_countries:
-                st.markdown("**🌍 Selected Countries:**")
-                st.write(", ".join(selected_countries))
+            # Show selected country if available
+            selected_country = session_table.get_selected_country()
+            if selected_country:
+                st.markdown("**🌍 Selected country:**")
+                st.write(", ".join(selected_country))
 
             # Show confirmation status
             if session_table.is_confirmation_completed():
