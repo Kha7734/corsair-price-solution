@@ -89,15 +89,6 @@ class SessionTable:
         """Get selected country list"""
         return st.session_state.session_data.get("selected_country", "")
 
-    # def set_selected_country(self, country):
-    #     """Set selected country list"""
-    #     if set(st.session_state.session_data.get("selected_country", "")) != set(country):
-    #         st.session_state.session_data["selected_country"] = country
-    #         # Reset confirmation when country change
-    #         st.session_state.session_data["confirmed_data"] = None
-    #         st.session_state.session_data["confirmation_completed"] = False
-    #         self.log_message(
-    #             f"Selected country changed to: {country}")
     def set_selected_country(self, country):
         """Store selected country"""
         current_country = st.session_state.session_data.get("selected_country", None)
@@ -113,6 +104,20 @@ class SessionTable:
                 self.log_message("Country selection cleared")
             else:
                 self.log_message(f"Country set to: {country}")
+
+    def set_data_push_completed(self):
+        """Mark data push as completed"""
+        st.session_state.session_data["data_push_completed"] = True
+        self.log_message("Data push marked as completed")
+
+    def is_data_push_completed(self):
+        """Check if data push is completed"""
+        return st.session_state.session_data.get("data_push_completed", False)
+
+    def clear_push_status(self):
+        """Clear data push status"""
+        st.session_state.session_data["data_push_completed"] = False
+        self.log_message("Data push status cleared")
 
 
     def clear_all(self):

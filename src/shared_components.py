@@ -28,26 +28,13 @@ def sidebar_info_fragment():
             selected_country = session_table.get_selected_country()
             if selected_country:
                 st.markdown("**🌍 Selected country:**")
-                st.write(", ".join(selected_country))
+                st.write(selected_country)
 
             # Show confirmation status
             if session_table.is_confirmation_completed():
                 st.success("✅ Data Confirmed")
             else:
                 st.info("⏳ Awaiting Confirmation")
-    # else:
-    #     # Show getting started guide when no validation data
-    #     st.header("🚀 Getting Started")
-    #     st.info("Upload data to see validation statistics")
-
-    #     # Show current file status if available
-    #     original_data = session_table.get_original_data()
-    #     if original_data is not None:
-    #         st.markdown("**📁 Current File:**")
-    #         file_info = st.session_state.session_data.get("file_info", {})
-    #         if file_info:
-    #             st.write(f"📄 {file_info.get('name', 'Unknown')}")
-
 
 def init_sidebar():
     """Initialize sidebar for any page - call this in every page"""

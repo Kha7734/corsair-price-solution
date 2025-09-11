@@ -1,6 +1,7 @@
 import streamlit as st
 from src.data_handler import SessionTable
-from src.ui_components import data_overview_section, country_selection_section, confirm_selection_section
+from src.data_display import data_overview_section
+from src.country_selection import country_selection_section, confirm_selection_section
 from src.shared_components import init_sidebar
 
 # Set page config
@@ -34,11 +35,10 @@ def main():
     # Show data overview section
     data_overview_section()
 
-    st.markdown("---")
-
     # Country selection section
     st.header("🌍 Country Selection")
     selected_country = country_selection_section()
+    
 
     # Confirmation section
     if selected_country:
@@ -55,8 +55,6 @@ def main():
         col1, col2 = st.columns(2)
         with col1:
             st.metric("📊 Confirmed Rows", len(confirmed_data))
-        # with col2:
-        #     st.metric("🌍 country", ", ".join(selected_country))
         with col2:
             st.metric("🌍 country", selected_country)
 

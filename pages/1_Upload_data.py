@@ -1,6 +1,6 @@
 import streamlit as st
 from src.data_handler import SessionTable
-from src.ui_components import upload_file_section
+from src.file_operations import upload_file_section
 from src.shared_components import init_sidebar
 
 # Set page config
