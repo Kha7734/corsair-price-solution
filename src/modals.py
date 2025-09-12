@@ -32,8 +32,10 @@ def show_confirmation_modal():
     with col2:
         st.metric("🌍 Target Country", country)
 
+    st.divider()
+
     # Button row
-    col1, col2, col3 = st.columns([2, 1, 2])
+    col1, col2 = st.columns(2)
     with col1:
         if st.button("❌ Cancel", type="tertiary"):
             # Clear modal states
@@ -41,7 +43,7 @@ def show_confirmation_modal():
             st.session_state.modal_data = {}
             st.rerun()
 
-    with col3:
+    with col2:
         if st.button("✅ Yes, Push Data", type="tertiary"):
             # Move to processing state
             st.session_state.show_confirmation_modal = False

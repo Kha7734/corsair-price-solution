@@ -272,6 +272,7 @@ def validate_data():
                         validation_stats["error_types"].get(error, 0) + 1
                     )
 
+
                 # Date validation - handle both string dates and Excel date numbers
                 try:
                     # Try to convert start and end dates
@@ -305,6 +306,7 @@ def validate_data():
                         validation_stats["error_types"][error] = (
                             validation_stats["error_types"].get(error, 0) + 1
                         )
+
 
                 # Update validation results
                 if errors:
@@ -341,6 +343,78 @@ def validate_data():
         session_table.log_message(error_msg, "ERROR")
         st.error(f"❌ Validation failed: {str(e)}")
         return None
+
+
+def parse_datetime_robust(date_value):
+    """
+    Robustly parse datetime values in various formats commonly found in uploaded files
+    Returns: (parsed_datetime, error_message)
+    """
+    if pd.isna(date_value) or date_value == '' or str(date_value).strip() == '':
+        return None, "Empty date value"
+    
+    # First, try pandas to_datetime without format (handles most formats automatically)
+    try:
+        parsed_date = pd.to_datetime(date_value, errors='raise')
+        if not pd.isna(parsed_date):
+            return parsed_date, None
+    except:
+        pass
+    
+    # Common explicit formats to try if automatic parsing fails
+    common_formats = [
+        '%Y-%m-%d',           # 2023-12-31
+        '%m/%d/%Y',           # 12/31/2023
+        '%d/%m/%Y',           # 31/12/2023
+        '%Y/%m/%d',           # 2023/12/31
+        '%d-%m-%Y',           # 31-12-2023
+        '%m-%d-%Y',           # 12-31-2023
+        '%Y%m%d',             # 20231231
+        '%d.%m.%Y',           # 31.12.2023
+        '%m.%d.%Y',           # 12.31.2023
+        '%Y.%m.%d',           # 2023.12.31
+        '%Y-%m-%d %H:%M:%S',  # 2023-12-31 23:59:59
+        '%m/%d/%Y %H:%M:%S',  # 12/31/2023 23:59:59
+        '%d/%m/%Y %H:%M:%S',  # 31/12/2023 23:59:59
+        '%d %b %Y',           # 31 Dec 2023
+        '%b %d, %Y',          # Dec 31, 2023
+        '%B %d, %Y',          # December 31, 2023
+        '%m/%d/%y',           # 12/31/23
+        '%d/%m/%y',           # 31/12/23
+    ]
+    
+    # Try each specific format
+    for fmt in common_formats:
+        try:
+            parsed_date = pd.to_datetime(date_value, format=fmt, errors='raise')
+            if not pd.isna(parsed_date):
+                return parsed_date, None
+        except:
+            continue
+    
+    # Handle Excel date numbers
+    try:
+        numeric_value = float(date_value)
+        if 1 <= numeric_value <= 73050:  # Valid Excel date range
+            parsed_date = pd.to_datetime(numeric_value, origin='1899-12-30', unit='D')
+            return parsed_date, None
+    except:
+        pass
+    
+    # Try Unix timestamps
+    try:
+        numeric_value = float(date_value)
+        if 978307200 <= numeric_value <= 2147483647:  # 2001-2038 range
+            parsed_date = pd.to_datetime(numeric_value, unit='s')
+            return parsed_date, None
+        elif 978307200000 <= numeric_value <= 2147483647000:  # milliseconds
+            parsed_date = pd.to_datetime(numeric_value, unit='ms')
+            return parsed_date, None
+    except:
+        pass
+    
+    return None, f"Unable to parse date: '{date_value}'"
+
 
 
 def prepare_display_data(view_filter, row_limit):

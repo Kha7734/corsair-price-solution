@@ -89,30 +89,104 @@ def _render_control_bar(selected_country, session_table):
             session_table.clear_all()
             st.rerun()
 
+def detect_datetime_format(series):
+    """Detect the datetime format from a pandas Series and return format string"""
+    if series.empty:
+        return "Unknown"
+    
+    # Filter out NaN values and get a sample
+    non_nan_values = series.dropna()
+    if len(non_nan_values) == 0:
+        return "Unknown"
+    
+    # Take a sample of values for format detection
+    sample_size = min(10, len(non_nan_values))
+    sample_values = non_nan_values.head(sample_size)
+    
+    # Common format patterns to detect
+    format_patterns = {
+        r'^\d{4}-\d{2}-\d{2}$': 'yyyy-mm-dd',
+        r'^\d{2}/\d{2}/\d{4}$': 'mm/dd/yyyy',
+        r'^\d{1,2}/\d{1,2}/\d{4}$': 'm/d/yyyy',
+        r'^\d{2}-\d{2}-\d{4}$': 'mm-dd-yyyy',
+        r'^\d{2}\.\d{2}\.\d{4}$': 'mm.dd.yyyy',
+        r'^\d{4}/\d{2}/\d{2}$': 'yyyy/mm/dd',
+        r'^\d{8}$': 'yyyymmdd',
+        r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$': 'yyyy-mm-dd hh:mm:ss',
+        r'^[A-Za-z]{3} \d{1,2}, \d{4}$': 'Mon d, yyyy',
+    }
+    
+    import re
+    string_values = sample_values.astype(str)
+    
+    # Count matches for each pattern
+    pattern_counts = {}
+    for pattern, format_name in format_patterns.items():
+        matches = sum(1 for val in string_values if re.match(pattern, val.strip()))
+        if matches > 0:
+            pattern_counts[format_name] = matches
+    
+    # Return the most common format
+    if pattern_counts:
+        most_common_format = max(pattern_counts.items(), key=lambda x: x[1])[0]
+        return most_common_format
+    
+    return 'datetime'  # Generic fallback
+
+def column_headers_for_dates(df):
+    """Enhance column headers by adding format information for date columns"""
+    enhanced_df = df.copy()
+    new_columns = []
+    
+    date_column_names = ['Start Date', 'End Date', 'StartDate', 'EndDate']
+    
+    for col in df.columns:
+        if col in date_column_names:
+            try:
+                if len(df[col].dropna()) > 0:
+                    detected_format = detect_datetime_format(df[col])
+                    if detected_format != 'Unknown':
+                        new_col_name = f"{col} ({detected_format})"
+                        new_columns.append(new_col_name)
+                    else:
+                        new_columns.append(col)
+                else:
+                    new_columns.append(col)
+            except Exception:
+                new_columns.append(col)
+        else:
+            new_columns.append(col)
+    
+    enhanced_df.columns = new_columns
+    return enhanced_df
 
 def _display_data_table(session_table):
-    """Display the data table with appropriate filtering"""
+    """Display the data table with enhanced datetime format headers"""
     try:
         view_filter = st.session_state.get("view_filter", "All Rows")
         row_limit = st.session_state.get("row_limit", 10)
 
         display_df = prepare_display_data(view_filter, row_limit)
         if display_df is not None:
-            st.dataframe(display_df)
+            # Enhance column headers for date columns
+            enhanced_df = column_headers_for_dates(display_df)
+            
+            st.dataframe(enhanced_df)
 
             selected_country = session_table.get_selected_country()
             if session_table.is_validation_completed():
                 st.caption(
-                    f"Showing {len(display_df)} rows from {view_filter.lower()} for {selected_country}")
+                    f"Showing {len(enhanced_df)} rows from {view_filter.lower()} for {selected_country}")
             else:
                 st.caption(
-                    f"Showing preview of first {len(display_df)} rows for {selected_country}")
+                    f"Showing preview of first {len(enhanced_df)} rows for {selected_country}")
         else:
             st.warning("No data to display")
     except Exception as e:
         error_msg = f"Error displaying data: {str(e)}"
         session_table.log_message(error_msg, "ERROR")
         st.error(f"❌ {error_msg}")
+
 
 
 def show_debug_log():
