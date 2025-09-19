@@ -273,45 +273,34 @@ def validate_data():
                     )
 
 
-                # Date validation - handle both string dates and Excel date numbers
-                try:
-                    # Try to convert start and end dates
-                    start_date = pd.to_datetime(row["Start Date"])
-                    end_date = pd.to_datetime(row["End Date"])
+                # Date validation using the new focused parser
+                start_date, start_err = parse_mm_dd_yyyy(row["Start Date"])
+                end_date, end_err = parse_mm_dd_yyyy(row["End Date"])
 
+                if start_err:
+                    errors.append(f"Start Date: {start_err}")
+                    validation_stats["error_types"][start_err] = (
+                        validation_stats["error_types"].get(start_err, 0) + 1
+                    )
+                
+                if end_err:
+                    errors.append(f"End Date: {end_err}")
+                    validation_stats["error_types"][end_err] = (
+                        validation_stats["error_types"].get(end_err, 0) + 1
+                    )
+
+                # Compare dates only if both were parsed correctly
+                if not start_err and not end_err:
                     if start_date >= end_date:
                         error = "Start Date must be before End Date"
                         errors.append(error)
                         validation_stats["error_types"][error] = (
                             validation_stats["error_types"].get(error, 0) + 1
                         )
-                except Exception:
-                    # Handle Excel date numbers if present
-                    try:
-                        start_date = pd.to_datetime(
-                            row["Start Date"], origin='1900-01-01', unit='D')
-                        end_date = pd.to_datetime(
-                            row["End Date"], origin='1900-01-01', unit='D')
-
-                        if start_date >= end_date:
-                            error = "Start Date must be before End Date"
-                            errors.append(error)
-                            validation_stats["error_types"][error] = (
-                                validation_stats["error_types"].get(
-                                    error, 0) + 1
-                            )
-                    except Exception:
-                        error = "Invalid date format"
-                        errors.append(error)
-                        validation_stats["error_types"][error] = (
-                            validation_stats["error_types"].get(error, 0) + 1
-                        )
-
 
                 # Update validation results
                 if errors:
-                    validation_df.at[idx,
-                                     "ValidationErrors"] = "; ".join(errors)
+                    validation_df.at[idx, "ValidationErrors"] = "\n".join(errors)
                     validation_df.at[idx, "IsValid"] = False
                     validation_stats["invalid_rows"] += 1
                 else:
@@ -345,75 +334,39 @@ def validate_data():
         return None
 
 
-def parse_datetime_robust(date_value):
+def parse_mm_dd_yyyy(date_value):
     """
-    Robustly parse datetime values in various formats commonly found in uploaded files
+    Robustly parse datetime values but only in 'mm-dd-yyyy' format.
     Returns: (parsed_datetime, error_message)
     """
-    if pd.isna(date_value) or date_value == '' or str(date_value).strip() == '':
+    if pd.isna(date_value) or str(date_value).strip() == '':
         return None, "Empty date value"
-    
-    # First, try pandas to_datetime without format (handles most formats automatically)
-    try:
-        parsed_date = pd.to_datetime(date_value, errors='raise')
-        if not pd.isna(parsed_date):
-            return parsed_date, None
-    except:
-        pass
-    
-    # Common explicit formats to try if automatic parsing fails
-    common_formats = [
-        '%Y-%m-%d',           # 2023-12-31
-        '%m/%d/%Y',           # 12/31/2023
-        '%d/%m/%Y',           # 31/12/2023
-        '%Y/%m/%d',           # 2023/12/31
-        '%d-%m-%Y',           # 31-12-2023
-        '%m-%d-%Y',           # 12-31-2023
-        '%Y%m%d',             # 20231231
-        '%d.%m.%Y',           # 31.12.2023
-        '%m.%d.%Y',           # 12.31.2023
-        '%Y.%m.%d',           # 2023.12.31
-        '%Y-%m-%d %H:%M:%S',  # 2023-12-31 23:59:59
-        '%m/%d/%Y %H:%M:%S',  # 12/31/2023 23:59:59
-        '%d/%m/%Y %H:%M:%S',  # 31/12/2023 23:59:59
-        '%d %b %Y',           # 31 Dec 2023
-        '%b %d, %Y',          # Dec 31, 2023
-        '%B %d, %Y',          # December 31, 2023
-        '%m/%d/%y',           # 12/31/23
-        '%d/%m/%y',           # 31/12/23
+
+    # Define the allowed date formats (month first)
+    mm_dd_yyyy_formats = [
+        '%m/%d/%Y',  # 12/31/2023
+        '%m-%d-%Y',  # 12-31-2023
+        '%m.%d.%Y',  # 12.31.2023
+        '%m/%d/%y',  # 12/31/23
+        '%m-%d-%y',  # 12-31-23
+        '%m.%d.%y',   # 12.31.23
+        '%m/%d/%Y %H:%M:%S',
+        '%m-%d-%Y %H:%M:%S',
     ]
-    
-    # Try each specific format
-    for fmt in common_formats:
+
+    # Attempt to parse the date using the allowed formats
+    for fmt in mm_dd_yyyy_formats:
         try:
+            # On non-Windows platforms, we can use %-m and %-d for non-padded month/day
+            # but for cross-platform compatibility, we will rely on pandas' flexibility
             parsed_date = pd.to_datetime(date_value, format=fmt, errors='raise')
             if not pd.isna(parsed_date):
                 return parsed_date, None
-        except:
+        except (ValueError, TypeError):
             continue
     
-    # Handle Excel date numbers
-    try:
-        numeric_value = float(date_value)
-        if 1 <= numeric_value <= 73050:  # Valid Excel date range
-            parsed_date = pd.to_datetime(numeric_value, origin='1899-12-30', unit='D')
-            return parsed_date, None
-    except:
-        pass
-    
-    # Try Unix timestamps
-    try:
-        numeric_value = float(date_value)
-        if 978307200 <= numeric_value <= 2147483647:  # 2001-2038 range
-            parsed_date = pd.to_datetime(numeric_value, unit='s')
-            return parsed_date, None
-        elif 978307200000 <= numeric_value <= 2147483647000:  # milliseconds
-            parsed_date = pd.to_datetime(numeric_value, unit='ms')
-            return parsed_date, None
-    except:
-        pass
-    
-    return None, f"Unable to parse date: '{date_value}'"
+    # If all formats fail, return an error
+    return None, f"Invalid date format: '{date_value}'. Please use MM/DD/YYYY."
 
 
 

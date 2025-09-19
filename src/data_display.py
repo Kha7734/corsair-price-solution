@@ -160,6 +160,7 @@ def column_headers_for_dates(df):
     enhanced_df.columns = new_columns
     return enhanced_df
 
+
 def _display_data_table(session_table):
     """Display the data table with enhanced datetime format headers"""
     try:
