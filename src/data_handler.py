@@ -17,16 +17,21 @@ class SessionTable:
 
     def __init__(self):
         if "session_data" not in st.session_state:
-            st.session_state.session_data = {
-                "original_data": None,
-                "validated_data": None,
-                "validation_completed": False,
-                "file_info": None,
-                "validation_log": [],
-                "selected_country": "",  # Add country selection to session
-                "confirmed_data": None,  # Store confirmed data for selected country
-                "confirmation_completed": False,
-            }
+            st.session_state.session_data = self._get_default_state()
+
+    def _get_default_state(self):
+        """Returns the default dictionary structure for the session state."""
+        return {
+            "original_data": None,
+            "validated_data": None,
+            "validation_completed": False,
+            "file_info": None,
+            "validation_log": [],
+            "selected_country": "",
+            "confirmed_data": None,  # Note: This is no longer used but kept for structural consistency
+            "confirmation_completed": False, # Note: This is no longer used
+            "data_push_completed": False, # This was the missing key
+        }
 
     def store_original_data(self, df, file_info):
         """Store original uploaded data"""
@@ -121,18 +126,27 @@ class SessionTable:
 
 
     def clear_all(self):
-        """Clear all session data"""
-        st.session_state.session_data = {
-            "original_data": None,
-            "validated_data": None,
-            "validation_completed": False,
-            "file_info": None,
-            "validation_log": [],
-            "confirmed_data": None,
-            "confirmation_completed": False,
-            "selected_country": "",
-        }
+        """Clears all data from the session, resetting it to the initial state."""
+        st.session_state.session_data = self._get_default_state()
+        self._clear_modal_states()
         self.log_message("Cleared all session data")
+
+    def _clear_modal_states(self):
+        """Clear all modal-related session states."""
+        modal_keys = [
+            'show_confirmation_modal',
+            'show_processing_modal', 
+            'show_success_modal',
+            'show_error_modal',
+            'data_push_completed',
+            'modal_data'
+        ]
+        for key in modal_keys:
+            if key in st.session_state:
+                if key == 'modal_data':
+                    st.session_state[key] = {}
+                else:
+                    st.session_state[key] = False
 
     def log_message(self, message, level="INFO"):
         """Add message to validation log"""

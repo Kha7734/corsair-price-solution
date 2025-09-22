@@ -3,6 +3,7 @@ from src.data_handler import SessionTable
 from src.data_display import data_overview_section
 from src.country_selection import country_selection_section, confirm_selection_section
 from src.shared_components import init_sidebar
+from src.snowflake_handler import upload_dataframe_to_snowflake
 
 # Set page config
 st.set_page_config(
@@ -42,22 +43,8 @@ def main():
 
     # Confirmation section
     if selected_country:
-        st.markdown("### Confirm Selection")
+        # st.header("Confirm Selection")
         confirm_selection_section(selected_country)
-
-    # Show confirmation status
-    if session_table.is_confirmation_completed():
-        confirmed_data = session_table.get_confirmed_data()
-        selected_country = session_table.get_selected_country()
-
-        st.success("✅ Data confirmed and ready for analysis!")
-
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric("📊 Confirmed Rows", len(confirmed_data))
-        with col2:
-            st.metric("🌍 country", selected_country)
-
 
 if __name__ == "__main__":
     main()

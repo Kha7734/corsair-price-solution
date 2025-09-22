@@ -1,124 +1,107 @@
 import streamlit as st
-import time
-
+from src.snowflake_handler import upload_original_data_to_snowflake
 
 def initialize_modal_states():
-    """Initialize modal-related session state variables"""
-    if 'show_confirmation_modal' not in st.session_state:
-        st.session_state.show_confirmation_modal = False
-    if 'show_processing_modal' not in st.session_state:
-        st.session_state.show_processing_modal = False
-    if 'show_success_modal' not in st.session_state:
-        st.session_state.show_success_modal = False
-    if 'data_push_completed' not in st.session_state:
-        st.session_state.data_push_completed = False
-    if 'modal_data' not in st.session_state:
-        st.session_state.modal_data = {}
+    """Initialize modal-related session state variables."""
+    states = {
+        'show_confirmation_modal': False,
+        'show_processing_modal': False,
+        'show_success_modal': False,
+        'show_error_modal': False,  # State for the error modal
+        'data_push_completed': False,
+        'modal_data': {}
+    }
+    for key, value in states.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
 
 
 @st.dialog("Confirm Data Push")
 def show_confirmation_modal():
-    """Display initial confirmation modal"""
-    country = st.session_state.modal_data.get('country', '')
+    """Display the initial confirmation modal."""
+    country = st.session_state.modal_data.get('country', 'N/A')
     row_count = st.session_state.modal_data.get('row_count', 0)
 
-    st.warning(
-        f"⚠️ Are you sure you want to push this data for **{country}**?")
-
-    # Show data details
+    st.warning(f"⚠️ Are you sure you want to push this data for **{country}**?")
+    
     col1, col2 = st.columns(2)
-    with col1:
-        st.metric("📊 Rows to Push", row_count)
-    with col2:
-        st.metric("🌍 Target Country", country)
-
+    col1.metric("📊 Rows to Push", f"{row_count:,}")
+    col2.metric("🌍 Country", country)
     st.divider()
 
-    # Button row
-    col1, col2 = st.columns(2)
+    col1, col2 = st.columns([1, 1])
     with col1:
-        if st.button("❌ Cancel", type="tertiary"):
-            # Clear modal states
+        if st.button("❌ Cancel", width="stretch"):
             st.session_state.show_confirmation_modal = False
-            st.session_state.modal_data = {}
             st.rerun()
 
     with col2:
-        if st.button("✅ Yes, Push Data", type="tertiary"):
-            # Move to processing state
+        if st.button("✅ Push Data", type="primary", width="stretch"):
             st.session_state.show_confirmation_modal = False
             st.session_state.show_processing_modal = True
             st.rerun()
 
-
-@st.dialog("Processing Data Push")
+@st.dialog("Processing...")
 def show_processing_modal():
-    """Display processing modal with progress"""
-    country = st.session_state.modal_data.get('country', '')
+    """
+    Display the processing modal and perform the upload to Snowflake.
+    """
+    country = st.session_state.modal_data.get('country', 'N/A')
     st.info(f"🔄 **Processing data push for {country}...**")
+    st.write("This process may take a few minutes. Please do not close this window.")
+    
+    with st.spinner("Connecting and uploading data to Snowflake..."):
+        session_table = st.session_state.session_table
+        # Call the main upload function
+        upload_result = upload_original_data_to_snowflake(session_table)
 
-    # Create progress simulation
-    progress_bar = st.progress(0)
-    status_text = st.empty()
-
-    # Simulate processing steps
-    steps = [
-        "Validating data format...",
-        "Connecting to server...",
-        "Uploading data...",
-        "Processing records...",
-        "Finalizing push..."
-    ]
-
-    for i, step in enumerate(steps):
-        status_text.text(step)
-        time.sleep(0.4)  # Simulate processing time
-        progress_bar.progress((i + 1) / len(steps))
-
-    # Complete processing
+    # Handle the result
     st.session_state.show_processing_modal = False
-    st.session_state.show_success_modal = True
-    st.session_state.data_push_completed = True
-
-    # Clear progress indicators
-    progress_bar.empty()
-    status_text.empty()
+    if upload_result["success"]:
+        # Save success info for display
+        st.session_state.modal_data['final_table_name'] = upload_result['table_name']
+        st.session_state.modal_data['rows_uploaded'] = upload_result['rows_uploaded']
+        st.session_state.show_success_modal = True
+    else:
+        # Save error message for display
+        st.session_state.modal_data['error_message'] = upload_result['message']
+        st.session_state.show_error_modal = True
+    
     st.rerun()
-
 
 @st.dialog("Data Push Successful")
 def show_success_modal():
-    """Display success modal after data push completion"""
-    country = st.session_state.modal_data.get('country', '')
-    row_count = st.session_state.modal_data.get('row_count', 0)
+    """Display the success modal after completion."""
+    country = st.session_state.modal_data.get('country', 'N/A')
+    row_count = st.session_state.modal_data.get('rows_uploaded', 0)
+    table_name = st.session_state.modal_data.get('final_table_name', 'N/A')
 
     st.success("🎉 **Data Push Completed Successfully!**")
-    st.markdown(
-        f"✅ Your data for **{country}** has been pushed and will be reflected in **24 hours** on the dashboard.")
+    
+    st.info(f"Table created: `{table_name}`")
 
-    # Show processing summary
-    col1, col2 = st.columns(2)
-    with col1:
-        st.metric("📊 Records Processed", row_count)
-    with col2:
-        st.metric("🌍 Country", country)
+    def clear_and_navigate():
+        """Clear all states and navigate to upload page."""
+        if hasattr(st.session_state, 'session_table'):
+            st.session_state.session_table.clear_all()
 
-    # OK button to close modal
-    col1, col2, col3 = st.columns([1, 8, 1])
-    with col2:
-        if st.button("✅ OK", type="secondary", use_container_width=True):
-            # Clear all modal states
-            st.session_state.show_confirmation_modal = False
-            st.session_state.show_processing_modal = False
-            st.session_state.show_success_modal = False
-            st.session_state.data_push_completed = False
-            st.session_state.modal_data = {}
+    if st.button("✅ OK", type="primary", width="stretch", 
+                on_click=clear_and_navigate):
+        st.switch_page("pages/1_Upload_data.py")
+        st.rerun()
 
-            # Clear all session data
-            session_table = st.session_state.session_table
-            session_table.clear_all()
-            session_table.log_message(
-                f"Data push completed for {country} - cleared all data and navigating to Upload page")
 
-            # Navigate to Upload Data page
-            st.switch_page("pages/1_Upload_data.py")
+@st.dialog("An Error Occurred")
+def show_error_modal():
+    """Display a modal when an error occurs."""
+    error_message = st.session_state.modal_data.get('error_message', 'An unknown error occurred.')
+
+    st.error("❌ **Data Push Failed!**")
+    st.write("An error occurred during the process. Please check the details below and try again.")
+    st.code(error_message, language=None)
+
+    if st.button("Close"):
+        # Only close the error modal, allowing the user to try again
+        st.session_state.show_error_modal = False
+        st.rerun()

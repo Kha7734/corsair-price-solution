@@ -39,7 +39,7 @@ def data_overview_section():
 
 def _render_control_bar(selected_country, session_table):
     """Render the control bar with validation and view options"""
-    col1, col2, col3, col4 = st.columns([2, 2, 1.5, 0.5])
+    col1, col2, col3, col4 = st.columns([2, 2, 2, 0.5])
 
     with col1:
         if st.button("Validate Data", type="secondary", icon="🔍"):

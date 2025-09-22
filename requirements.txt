@@ -1,5 +1,9 @@
 streamlit
+streamlit[auth]
+
 pandas
 openpyxl
 numpy
-streamlit[auth]
+
+snowflake-connector-python
+PyJWT[crypto]

@@ -3,7 +3,6 @@ import streamlit as st
 
 @st.fragment
 def sidebar_info_fragment():
-    """Shared sidebar fragment for all pages"""
     # Data validation statistics
     session_table = st.session_state.session_table
 

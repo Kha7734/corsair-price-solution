@@ -32,19 +32,12 @@ def main():
     if original_data is not None:
         st.success("✅ File uploaded successfully!")
         
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric("📊 Rows", len(original_data))
-        with col2:
-            st.metric("📋 Columns", len(original_data.columns))
-        
         # Show data preview
-        with st.expander("👁️ Data Preview", expanded=False):
-            st.dataframe(original_data.head(10))
+        with st.expander("👁️ Data Preview", expanded=True):
+            st.dataframe(original_data.head(3))
         
         # Navigation button instead of info message
-        st.markdown("---")
-        if st.button("📊 Go to Data Overview", width="stretch"):
+        if st.button("📊 Go to Data Overview", width="stretch", type="primary"):
             st.switch_page("pages/2_Data_overview.py")
 
     else:
