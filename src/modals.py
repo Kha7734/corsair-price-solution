@@ -16,7 +16,6 @@ def initialize_modal_states():
             st.session_state[key] = value
 
 
-
 @st.dialog("Confirm Data Push")
 def show_confirmation_modal():
     """Display the initial confirmation modal."""
@@ -70,6 +69,7 @@ def show_processing_modal():
     
     st.rerun()
 
+
 @st.dialog("Data Push Successful")
 def show_success_modal():
     """Display the success modal after completion."""
@@ -92,6 +92,7 @@ def show_success_modal():
         st.rerun()
 
 
+
 @st.dialog("An Error Occurred")
 def show_error_modal():
     """Display a modal when an error occurs."""
@@ -101,7 +102,23 @@ def show_error_modal():
     st.write("An error occurred during the process. Please check the details below and try again.")
     st.code(error_message, language=None)
 
-    if st.button("Close"):
-        # Only close the error modal, allowing the user to try again
-        st.session_state.show_error_modal = False
-        st.rerun()
+    # Add an option to go back to the previous page or reset
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("Close", key="close_error_modal", width="stretch"):
+            st.session_state.show_error_modal = False
+            st.session_state.show_processing_modal = False
+            if 'processing_started' in st.session_state:
+                del st.session_state.processing_started
+            
+
+    with col2:
+        if st.button("Back to Upload", key="back_to_upload", width="stretch"):
+            st.session_state.show_error_modal = False
+            st.session_state.show_processing_modal = False
+            if 'processing_started' in st.session_state:
+                del st.session_state.processing_started
+            st.switch_page("pages/1_Upload_data.py")
+
+    st.rerun()

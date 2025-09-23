@@ -173,7 +173,7 @@ session_table = SessionTable()
 
 
 def validate_data():
-    """Validate the entire original dataset with new column structure"""
+    """Validate the entire original dataset with vectorized validation"""
     original_data = session_table.get_original_data()
     if original_data is None:
         session_table.log_message(
@@ -183,7 +183,7 @@ def validate_data():
     session_table.log_message("Starting data validation on entire dataset")
 
     try:
-        # Updated required columns for new structure
+        # Required columns for validation
         required_columns = [
             "Category",
             "Item",
@@ -206,129 +206,111 @@ def validate_data():
             st.error(f"❌ {error_msg}")
             return None
 
-        session_table.log_message("All required columns found")
-
         # Create validation copy
         validation_df = original_data.copy()
         validation_df["ValidationErrors"] = ""
         validation_df["IsValid"] = True
 
-        session_table.log_message(f"Validating {len(validation_df)} rows")
+        # Vectorized validation functions
+        def validate_text_fields(df, columns):
+            """Validate text fields are not empty"""
+            errors = []
+            for col in columns:
+                mask = df[col].isna() | (df[col].astype(str).str.strip() == "")
+                errors.append((mask, f"Missing {col}"))
+            return errors
+
+        def validate_numeric(df, column, condition, error_msg):
+            """Validate numeric columns based on a condition"""
+            try:
+                # Convert to numeric, coerce errors to NaN
+                numeric_col = pd.to_numeric(df[column], errors='coerce')
+                # Create mask based on condition
+                mask = (~numeric_col.notnull()) | (~condition(numeric_col))
+                return [(mask, error_msg)]
+            except Exception:
+                # If conversion fails completely
+                return [(pd.Series([True]*len(df), index=df.index), f"Invalid {column}")]
+
+        # Collect all validation errors
+        all_errors = []
+
+        # Text field validation
+        text_fields = ["Category", "Item", "Density"]
+        all_errors.extend(validate_text_fields(validation_df, text_fields))
+
+        # Numeric validations with vectorized checks
+        all_errors.extend(validate_numeric(
+            validation_df,
+            "MSRP",
+            lambda x: x > 0,
+            "MSRP must be > 0"
+        ))
+
+        all_errors.extend(validate_numeric(
+            validation_df,
+            "PROMO",
+            lambda x: x >= 0,
+            "PROMO must be >= 0"
+        ))
+
+        all_errors.extend(validate_numeric(
+            validation_df,
+            "Discount",
+            lambda x: x <= 0,
+            "Discount should be <= 0"
+        ))
+
+        # Date validation
+        def validate_dates(df):
+            """Validate and compare dates"""
+            date_errors = []
+
+            # Parse dates
+            df['ParsedStartDate'] = pd.to_datetime(df['Start Date'], errors='coerce')
+            df['ParsedEndDate'] = pd.to_datetime(df['End Date'], errors='coerce')
+
+            # Invalid date parsing
+            date_errors.append((
+                df['ParsedStartDate'].isna(),
+                "Invalid Start Date"
+            ))
+            date_errors.append((
+                df['ParsedEndDate'].isna(),
+                "Invalid End Date"
+            ))
+
+            # Date comparison
+            date_errors.append((
+                df['ParsedStartDate'] >= df['ParsedEndDate'],
+                "Start Date must be before End Date"
+            ))
+
+            return date_errors
+
+        # Add date validation errors
+        all_errors.extend(validate_dates(validation_df))
+
+        # Apply validation errors
+        for error_mask, error_msg in all_errors:
+            # Accumulate errors for rows
+            validation_df.loc[error_mask, 'ValidationErrors'] = validation_df.loc[error_mask, 'ValidationErrors'].fillna('') + error_msg + '; '
+            validation_df.loc[error_mask, 'IsValid'] = False
+
+        # Clean up error strings
+        validation_df['ValidationErrors'] = validation_df['ValidationErrors'].str.rstrip('; ')
 
         # Validation statistics
         validation_stats = {
             "total_rows": len(validation_df),
-            "valid_rows": 0,
-            "invalid_rows": 0,
-            "error_types": {},
+            "valid_rows": sum(validation_df['IsValid']),
+            "invalid_rows": sum(~validation_df['IsValid']),
+            "error_types": {}
         }
 
-        # Validate each row
-        for idx, row in validation_df.iterrows():
-            try:
-                errors = []
-
-                # Check required fields (text fields)
-                text_fields = ["Category", "Item", "Density"]
-                for col in text_fields:
-                    if pd.isna(row[col]) or str(row[col]).strip() == "":
-                        error = f"Missing {col}"
-                        errors.append(error)
-                        validation_stats["error_types"][error] = (
-                            validation_stats["error_types"].get(error, 0) + 1
-                        )
-
-                # Check MSRP (must be > 0)
-                try:
-                    msrp = float(row["MSRP"])
-                    if msrp <= 0:
-                        error = "MSRP must be > 0"
-                        errors.append(error)
-                        validation_stats["error_types"][error] = (
-                            validation_stats["error_types"].get(error, 0) + 1
-                        )
-                except:
-                    error = "Invalid MSRP"
-                    errors.append(error)
-                    validation_stats["error_types"][error] = (
-                        validation_stats["error_types"].get(error, 0) + 1
-                    )
-
-                # Check PROMO (must be >= 0)
-                try:
-                    promo = float(row["PROMO"])
-                    if promo < 0:
-                        error = "PROMO must be >= 0"
-                        errors.append(error)
-                        validation_stats["error_types"][error] = (
-                            validation_stats["error_types"].get(error, 0) + 1
-                        )
-                except:
-                    error = "Invalid PROMO"
-                    errors.append(error)
-                    validation_stats["error_types"][error] = (
-                        validation_stats["error_types"].get(error, 0) + 1
-                    )
-
-                # Check Discount (should be negative or 0)
-                try:
-                    discount = float(row["Discount"])
-                    if discount > 0:
-                        error = "Discount should be <= 0"
-                        errors.append(error)
-                        validation_stats["error_types"][error] = (
-                            validation_stats["error_types"].get(error, 0) + 1
-                        )
-                except:
-                    error = "Invalid Discount"
-                    errors.append(error)
-                    validation_stats["error_types"][error] = (
-                        validation_stats["error_types"].get(error, 0) + 1
-                    )
-
-
-                # Date validation using the new focused parser
-                start_date, start_err = parse_mm_dd_yyyy(row["Start Date"])
-                end_date, end_err = parse_mm_dd_yyyy(row["End Date"])
-
-                if start_err:
-                    errors.append(f"Start Date: {start_err}")
-                    validation_stats["error_types"][start_err] = (
-                        validation_stats["error_types"].get(start_err, 0) + 1
-                    )
-                
-                if end_err:
-                    errors.append(f"End Date: {end_err}")
-                    validation_stats["error_types"][end_err] = (
-                        validation_stats["error_types"].get(end_err, 0) + 1
-                    )
-
-                # Compare dates only if both were parsed correctly
-                if not start_err and not end_err:
-                    if start_date >= end_date:
-                        error = "Start Date must be before End Date"
-                        errors.append(error)
-                        validation_stats["error_types"][error] = (
-                            validation_stats["error_types"].get(error, 0) + 1
-                        )
-
-                # Update validation results
-                if errors:
-                    validation_df.at[idx, "ValidationErrors"] = "\n".join(errors)
-                    validation_df.at[idx, "IsValid"] = False
-                    validation_stats["invalid_rows"] += 1
-                else:
-                    validation_stats["valid_rows"] += 1
-
-            except Exception as row_error:
-                error_msg = f"Error validating row {idx}: {str(row_error)}"
-                session_table.log_message(error_msg, "ERROR")
-                validation_df.at[idx, "ValidationErrors"] = (
-                    f"Validation error: {str(row_error)}"
-                )
-                validation_df.at[idx, "IsValid"] = False
-                validation_stats["invalid_rows"] += 1
-
+        # Count error types
+        error_breakdown = validation_df[~validation_df['IsValid']]['ValidationErrors'].str.split('; ', expand=True).stack()
+        validation_stats['error_types'] = error_breakdown.value_counts().to_dict()
         # Store validation results
         session_table.store_validated_data(validation_df)
 
@@ -452,3 +434,4 @@ def prepare_display_data(view_filter, row_limit):
 def has_data_for_overview(self):
     """Check if there's enough data to show the overview tab"""
     return self.get_original_data() is not None
+

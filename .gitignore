@@ -166,3 +166,8 @@ cython_debug/
 sample_data/*
 
 .clineignore
+
+.github
+.devcontainer
+
+.continue

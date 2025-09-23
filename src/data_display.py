@@ -7,7 +7,7 @@ def data_overview_section():
     session_table = st.session_state.session_table
 
     # Initialize modal states
-    from .modals import initialize_modal_states, show_confirmation_modal, show_processing_modal, show_success_modal
+    from .modals import initialize_modal_states, show_confirmation_modal, show_processing_modal, show_success_modal, show_error_modal
     initialize_modal_states()
 
     # Show modals in sequence
@@ -21,6 +21,10 @@ def data_overview_section():
 
     if st.session_state.show_success_modal:
         show_success_modal()
+        return
+
+    if st.session_state.show_error_modal:
+        show_error_modal()
         return
 
     # Regular data overview content
